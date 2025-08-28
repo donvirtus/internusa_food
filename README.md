@@ -1,17 +1,17 @@
 # Gatekeeper System for PT. Internusa Food
 
 ## Overview
-Gatekeeper adalah sistem modular berbasis software yang dirancang untuk PT. Internusa Food guna mengatasi masalah ketidaksinkronan data pasca-barang keluar gudang menuju pengiriman ke buyer. Sistem ini berfungsi sebagai "penjaga gerbang" di loading dock, memverifikasi dan mencatat detail muatan ke kendaraan pengangkut, menghasilkan dokumen untuk review sebelum import ke Accurate, dan menyediakan bukti digital (termasuk rekaman CCTV) untuk menangani komplain buyer.
+Gatekeeper adalah sistem modular berbasis software yang dirancang untuk PT. Internusa Food guna mengatasi masalah ketidaksinkronan data pasca-barang keluar gudang menuju pengiriman ke buyer. Sistem ini berfungsi sebagai "penjaga gerbang" di loading dock, memverifikasi dan mencatat detail muatan ke kendaraan pengangkut berdasarkan sales order (SO), menghasilkan dokumen untuk review sebelum import ke Accurate, dan menyediakan bukti digital (foto dan video CCTV) untuk menangani komplain buyer.
 
 **Tujuan Utama:**
-- Tracking akurat: Mengetahui barang apa yang dimuat ke truk mana.
+- Tracking akurat: Mengetahui barang apa yang dimuat ke truk mana berdasarkan nomor sales order.
 - Preview data: Menghasilkan laporan untuk review manual sebelum import ke Accurate (surat jalan).
 - Bukti anti-komplain: Memberikan dokumentasi digital (foto, log, timestamp, dan video CCTV) untuk buyer.
 - Pendekatan bertahap: Uji coba via Excel tanpa ganggu sistem existing (Accurate/WMS).
 
 **Masalah yang Diatasi:**
-- Ketidaksinkronan stok antara Accurate (agregat) dan WMS (real-time). Note: TIDAK mengubah apapun baik di WMS ataupun Accurate (system yang sudah ada). 
-- Kurangnya bukti visual/digital, menyebabkan komplain buyer soal barang kurang/tidak sesuai.
+- Ketidaksinkronan stok antara Accurate (agregat) dan WMS (real-time).
+- Kurangnya bukti visual/digital, menyebabkan komplain buyer soal barang kurang/tidak sesuai pesanan.
 - Proses manual yang rentan error.
 
 **Manfaat:**
@@ -22,7 +22,7 @@ Gatekeeper adalah sistem modular berbasis software yang dirancang untuk PT. Inte
 ## Features
 ### Fitur Utama
 - **Tracking Muatan**:
-  - Catat: Nomor mobil pengangkut (contoh: B 1234 XYZ), nama driver, nomor stock opname (SO-2025-001), detail barang (nama, jumlah, batch, expiry).
+  - Catat: Nomor mobil pengangkut (contoh: B 1234 XYZ), nama driver, nomor sales order (SO-2025-001), detail barang (nama, jumlah, batch, expiry) sesuai pesanan.
   - Tambahan: Timestamp loading, foto muatan, signature digital operator, dan rekaman CCTV selama proses loading.
 - **Generasi Dokumen**:
   - Excel/CSV file untuk preview data muatan sebelum import ke Accurate.
@@ -32,10 +32,10 @@ Gatekeeper adalah sistem modular berbasis software yang dirancang untuk PT. Inte
   - Email/SMS ke buyer dengan bukti digital setelah approval.
 - **Integrasi CCTV**:
   - Rekam proses loading via IP camera (RTSP stream) di loading dock.
-  - Auto-overlay timestamp dan stock opname pada video.
+  - Auto-overlay timestamp dan nomor sales order pada video.
   - Simpan klip MP4, link ke output preview untuk review.
 - **Integrasi RFID (Opsional)**:
-  - Scan otomatis tag RFID pada barang/palet untuk tracking real-time.
+  - Scan otomatis tag RFID pada barang/palet untuk validasi real-time sesuai sales order.
 - **Dashboard Monitoring (Opsional)**:
   - Web-based view untuk status muatan dan playback video CCTV.
 
@@ -85,7 +85,7 @@ Gatekeeper adalah sistem modular berbasis software yang dirancang untuk PT. Inte
 ### Alur Kerja Uji Coba (Manual via Excel dengan Preview)
 1. **Input Data**:
    - Operator masukkan data via form Excel atau app sederhana:
-     - Nomor mobil, nama driver, nomor stock opname, detail barang.
+     - Nomor mobil, nama driver, nomor sales order, detail barang sesuai pesanan.
      - Timestamp (otomatis), foto muatan (upload), signature digital.
      - Rekaman CCTV otomatis di-trigger saat proses loading dimulai.
 2. **Proses Data**:
@@ -98,17 +98,17 @@ Gatekeeper adalah sistem modular berbasis software yang dirancang untuk PT. Inte
 ### Contoh Output Preview
 - **Excel/CSV**:
   ```
-  Nomor_Mobil,Nama_Driver,Nomor_Stock_Opname,Detail_Barang,Timestamp,Foto_Muatan,Operator_Signature,Video_Link
-  B 1234 XYZ,Budi Santoso,SO-2025-001,"50 box Mie ABC, batch #123, expiry 2026-01-01",2025-08-28 13:45:28,muatan_001.jpg,John Doe (digital sign),https://cloud.internusa.com/loading_001.mp4
+  Nomor_Mobil,Nama_Driver,Nomor_Sales_Order,Detail_Barang,Timestamp,Foto_Muatan,Operator_Signature,Video_Link
+  B 1234 XYZ,Budi Santoso,SO-2025-001,"50 box Mie ABC, batch #123, expiry 2026-01-01",2025-08-28 15:46:28,muatan_001.jpg,John Doe (digital sign),https://cloud.internusa.com/loading_001.mp4
   ```
 - **PDF Bukti Muatan**:
   ```
   Bukti Muatan PT. Internusa Food
   Nomor_Mobil: B 1234 XYZ
   Nama_Driver: Budi Santoso
-  Nomor_Stock_Opname: SO-2025-001
+  Nomor_Sales_Order: SO-2025-001
   Detail_Barang: 50 box Mie ABC, batch #123, expiry 2026-01-01
-  Timestamp: 2025-08-28 13:45:28
+  Timestamp: 2025-08-28 15:46:28
   Foto_Muatan: muatan_001.jpg
   Operator_Signature: John Doe (digital sign)
   Video_CCTV: https://cloud.internusa.com/loading_001.mp4
@@ -132,7 +132,7 @@ import os
 data = {
     'Nomor_Mobil': 'B 1234 XYZ',
     'Nama_Driver': 'Budi Santoso',
-    'Nomor_Stock_Opname': 'SO-2025-001',
+    'Nomor_Sales_Order': 'SO-2025-001',
     'Detail_Barang': '50 box Mie ABC, batch #123, expiry 2026-01-01',
     'Timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     'Foto_Muatan': 'muatan_001.jpg',
@@ -152,7 +152,7 @@ while cap.isOpened() and frame_count < max_frames:
     ret, frame = cap.read()
     if not ret:
         break
-    cv2.putText(frame, f'Stock Opname: SO-2025-001', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.putText(frame, f'Sales Order: SO-2025-001', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
     cv2.putText(frame, f'Timestamp: {datetime.datetime.now()}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
     out.write(frame)
     frame_count += 1
@@ -220,9 +220,10 @@ send_email('buyer@client.com', 'Preview Bukti Pengiriman',
 
 ## Development Notes
 - **Bahasa**: Python untuk backend, OpenCV untuk proses video CCTV, C++ (opsional) untuk performa tinggi via pybind11.
+- **Catatan Sales Order**: Nomor sales order (SO) merujuk ke pesanan penjualan, bukan inventarisasi stok. Pastikan format SO sesuai dengan sistem PT. Internusa (misalnya, include detail item pesanan, jumlah, batch).
 - **Hardware Tambahan**: IP camera dengan RTSP (contoh: Hikvision, Rp 10-50 juta per dock). Storage cloud untuk video (AWS S3/Google Cloud).
 - **Testing**: Uji coba di 1 gudang dengan 1 kamera dan data dummy (1-2 minggu).
-- **Ekspansi**: Integrasi API Accurate/WMS, tambah ML (PyTorch) untuk deteksi anomali di video CCTV atau prediksi delay pengiriman.
+- **Ekspansi**: Integrasi API Accurate/WMS setelah uji coba sukses, tambah ML (PyTorch) untuk deteksi anomali di video CCTV atau prediksi delay pengiriman.
 
 ## Contributors
 - **Mr. Don**: Pemilik proyek dan penyedia requirements.
