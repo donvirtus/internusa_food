@@ -10,7 +10,7 @@ Gatekeeper adalah sistem modular berbasis software yang dirancang untuk PT. Inte
 - Pendekatan bertahap: Uji coba via Excel tanpa ganggu sistem existing (Accurate/WMS).
 
 **Masalah yang Diatasi:**
-- Ketidaksinkronan stok antara Accurate (agregat) dan WMS (real-time).
+- Ketidaksinkronan stok antara Accurate (agregat) dan WMS (real-time). Note: TIDAK mengubah apapun baik di WMS ataupun Accurate (system yang sudah ada). 
 - Kurangnya bukti visual/digital, menyebabkan komplain buyer soal barang kurang/tidak sesuai.
 - Proses manual yang rentan error.
 
