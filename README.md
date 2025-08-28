@@ -22,7 +22,7 @@ Gatekeeper adalah sistem modular berbasis software yang dirancang untuk PT. Inte
 ## Features
 ### Fitur Utama
 - **Tracking Muatan**:
-  - Catat: Nomor mobil pengangkut (contoh: B 1234 XYZ), nama driver, nomor sales order (SO-2025-001), Palet_ID (contoh: PLT-001).
+  - Catat: Nomor mobil pengangkut (contoh: B 1234 XYZ), nama driver, nomor sales order (SO), Palet_ID (contoh: PLT-001).
   - Tambahan: Timestamp loading, foto muatan palet, signature digital operator, dan rekaman CCTV selama proses loading.
 - **Pembuatan Dokumen Laporan**:
   - Excel/CSV file untuk preview data muatan palet sebelum import ke Accurate.
