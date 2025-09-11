@@ -38,7 +38,7 @@ Arsitektur client-server memisahkan frontend (UI) dan backend (logika bisnis).
 
 **Diagram Alur Sederhana**:
 ```
-Produksi → WMS Rack (FIFO, catat RFID tag/barcode) → Loading Dock (Gatekeeper: Verifikasi SO, Scan RFID/Barcode, Catat Jumlah, Bukti Digital) → Accurate (Ekspor DO) → Pengiriman ke Pembeli
+Produksi → WMS Rack (FIFO, catat barcode) → Loading Dock (Gatekeeper: Verifikasi SO, Scan RFID/Barcode, Catat Jumlah, Bukti Digital) → Accurate (Ekspor DO) → Pengiriman ke Pembeli
 ```
 
 ## 3. Alur Kerja Sistem
@@ -54,14 +54,23 @@ Proses dimulai saat tim warehouse terima SO dari Accurate dan siapkan palet dari
 3. Sistem catat waktu mulai sesi, trigger CCTV jika aktif.
 
 **Tahap 2: Proses Pemuatan dan Pemindaian Palet**  
-1. Untuk setiap palet dari WMS, operator scan ID Palet via UHF RFID reader (EL-UHF-RC4-2, otomatis, TCP/IP) atau barcode scanner (manual fallback).  
-2. ID Palet auto-tambah ke PalletsTable di frontend, ambil data WMS (e.g., 48 kardus XYZ).  
-3. Penanganan Perbedaan Jumlah:  
+1. Operator import CSV WMS ke Gatekeeper (barcode ID, jenis barang, jumlah kardus, dll.).  
+2. Untuk palet tanpa RFID tag (operasi pertama), operator scan barcode (atau input manual), encode ID barcode ke RFID tag (EPC bank via EL-UHF-RC4-2), tempel tag ke palet, simpan mapping di DB Gatekeeper.  
+3. Untuk palet dengan RFID, scan RFID (prioritas) atau barcode (fallback) saat muat ke truk. ID palet auto-tambah ke PalletsTable di frontend, validasi dengan SO.  
+4. **Penanganan Error** (dari skenario operasional):  
+   - **RFID Tag Belum Ada**: Encode baru dengan ID barcode WMS, tempel ke palet.  
+   - **RFID Tag Rusak**: Encode tag baru, update mapping di DB Gatekeeper.  
+   - **Barcode Rusak**: Input manual ID palet (dari WMS CSV/SO), encode RFID baru.  
+   - **Barcode dan RFID Rusak**: Input manual, encode RFID baru.  
+   - **Mismatch SO vs Palet**: Alert di frontend, ganti palet sesuai SO.  
+   - **Interferensi RFID**: Scan ulang perlahan, pakai tag anti-metal, atau fallback barcode.  
+   - **CSV WMS Tidak Update**: Input manual sebagai "pending validation" sampai CSV refresh.  
+5. Penanganan Perbedaan Jumlah:  
    - Sistem tampilkan info palet (e.g., 48 kardus).  
    - Bandingkan dengan SO (e.g., butuh 40 kardus).  
    - Operator input jumlah aktual dimuat (e.g., 40) via tabel.  
    - Sisa (e.g., 8 kardus) ditangani manual di luar Gatekeeper (pindah ke palet khusus, catat ke WMS).  
-4. Untuk truk besar (40+ palet), RFID reader scan bulk dari pintu belakang post-loading untuk verifikasi (e.g., 20 palet ke Truk A, 20 ke B).
+6. Untuk truk besar (40+ palet), bulk scan RFID dari pintu belakang post-loading untuk verifikasi (e.g., 20 palet ke Truk A, 20 ke B).
 
 **Tahap 3: Penyelesaian Sesi**  
 1. Setelah semua palet sesuai SO dimuat, operator lampirkan bukti:  
@@ -113,15 +122,52 @@ Proses dimulai saat tim warehouse terima SO dari Accurate dan siapkan palet dari
 - Operator: Buat/load session via /loads route, scan RFID/barcode, input jumlah kardus.  
 - Admin: Review/export via dashboard, verifikasi sebelum import DO.
 
-## 8. Development Notes
+## 8. Kelebihan dan Kekurangan
+### Kelebihan
+- **Otomatisasi Tracking**: RFID (EL-UHF-RC4-2/RF014) memungkinkan bulk scan palet (40+ di truk besar), kurangi waktu verifikasi hingga 70% dibanding barcode manual.<grok:render type="render_inline_citation">
+<argument name="citation_id">4</argument>
+</grok:render>
+- **Bukti Digital**: Foto muatan, CCTV dengan overlay, dan tandatangan digital kurangi komplain pembeli hingga 80% dengan bukti transparan.<grok:render type="render_inline_citation">
+<argument name="citation_id">2</argument>
+</grok:render>
+- **Non-Invasive**: Integrasi via CSV tanpa ubah WMS, cocok untuk sistem lama PT. Internusa Food.<grok:render type="render_inline_citation">
+<argument name="citation_id">0</argument>
+</grok:render>
+- **Fleksibel**: Handle tujuh skenario operasional (RFID/barcode rusak, mismatch SO, dll.) dengan fallback barcode/input manual.<grok:render type="render_inline_citation">
+<argument name="citation_id">9</argument>
+</grok:render>
+
+### Kekurangan
+- **Kecurangan Jumlah Kardus**: RFID palet hanya lacak palet, bukan kardus individu, buka celah manipulasi jumlah (e.g., muat 35 kardus tapi lapor 40). Mitigasi via input manual jumlah, foto/CCTV, dan tandatangan digital, tapi tidak 100% otomatis.<grok:render type="render_inline_citation">
+<argument name="citation_id">10</argument>
+</grok:render>
+- **Interferensi RFID**: Tag di truk besar (40+ palet) mungkin gagal dibaca karena metal/cairan. Solusi: Tag anti-metal, scan ulang, atau upgrade ke EL-UHF-RF014.<grok:render type="render_inline_citation">
+<argument name="citation_id">5</argument>
+</grok:render>
+- **Ketergantungan Manual**: Barcode rusak atau CSV WMS tidak update butuh input manual, rawan error manusia meski minim.<grok:render type="render_inline_citation">
+<argument name="citation_id">7</argument>
+</grok:render>
+
+## 9. Development Notes
 - **Prototyping**: Gunakan EL-UHF-RC4-2 (TCP/IP) untuk uji coba 1 dock (SO kecil, 10-20 palet). Upgrade ke EL-UHF-RF014 untuk truk besar (40+ palet, jarak baca 15m).  
+- **Skenario Operasional**:
+  - **RFID Tag Belum Ada**: Encode ID barcode WMS ke tag, tempel ke palet, simpan mapping.
+  - **RFID Tag Rusak**: Encode tag baru, update mapping.
+  - **Barcode Rusak**: Input manual ID palet, encode RFID baru.
+  - **Barcode dan RFID Rusak**: Input manual, encode RFID baru.
+  - **Mismatch SO vs Palet**: Alert, ganti palet sesuai SO.
+  - **Interferensi RFID**: Scan ulang, tag anti-metal, atau fallback barcode.
+  - **CSV WMS Tidak Update**: Input manual sebagai "pending validation".
 - **Security**: AES enkripsi untuk data sensitif, audit trail (timestamp per aksi).  
 - **Testing**: Uji 1-2 minggu dengan data dummy, fokus verifikasi bulk palet di truk.  
-- **Ekspansi**: Integrasi ML (OCR plat mobil, deteksi anomali video), API Accurate/WMS.  
+- **Rencana Pengembangan**:
+  - **Jangka Pendek (1-3 bulan)**: Prototipe dengan EL-UHF-RC4-2, handle tujuh skenario, validasi via foto/CCTV. Tambah UI React untuk input manual jumlah kardus dan error handling (mismatch, tag rusak).
+  - **Jangka Menengah (3-12 bulan)**: Upgrade ke EL-UHF-RF014 untuk truk besar. Integrasi computer vision (OpenCV) untuk hitung kardus otomatis dari foto, kurangi kecurangan jumlah. Tambah API WMS/Accurate jika klien setuju.
+  - **Jangka Panjang (12+ bulan)**: RFID per kardus untuk akurasi 100% (jika budget memungkinkan). ML untuk deteksi anomali CCTV (e.g., kardus hilang). Skalabilitas cloud penuh (AWS) untuk multi-dock.
 - **Contributors**: Mr. Don (pemilik), Bejo (developer, ekspert Python/C++).
 
-## 9. License
+## 10. License
 MIT License.
 
-## 10. Contact
+## 11. Contact
 Hubungi Bejo via [email protected] untuk feedback.
